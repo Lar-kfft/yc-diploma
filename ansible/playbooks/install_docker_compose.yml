@@ -1,0 +1,53 @@
+---
+- name: Install docker-compose and run Elasticsearch
+  hosts: elastic
+  become: yes
+  tasks:
+    - name: Increase vm.max_map_count
+      sysctl:
+        name: vm.max_map_count
+        value: '262144'
+        state: present
+        reload: yes
+
+    - name: Install docker-compose
+      get_url:
+        url: https://github.com/docker/compose/releases/latest/download/docker-compose-Linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    - name: Create elasticsearch directory
+      file:
+        path: /opt/elasticsearch
+        state: directory
+
+    - name: Create docker-compose.yml
+      copy:
+        dest: /opt/elasticsearch/docker-compose.yml
+        content: |
+          version: '3'
+          services:
+            elasticsearch:
+              image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+              container_name: elasticsearch
+              restart: always
+              ports:
+                - "9200:9200"
+                - "9300:9300"
+              environment:
+                - discovery.type=single-node
+                - ES_JAVA_OPTS=-Xms1g -Xmx1g
+                - xpack.security.enabled=false
+              volumes:
+                - ./data:/usr/share/elasticsearch/data
+
+    - name: Stop and remove old container
+      shell: |
+        cd /opt/elasticsearch
+        docker-compose down || true
+      ignore_errors: yes
+
+    - name: Start Elasticsearch with docker-compose
+      shell: |
+        cd /opt/elasticsearch
+        docker-compose up -d

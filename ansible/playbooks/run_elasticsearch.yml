@@ -1,0 +1,33 @@
+---
+- name: Run Elasticsearch in Docker
+  hosts: elastic
+  become: yes
+  tasks:
+    - name: Increase vm.max_map_count
+      sysctl:
+        name: vm.max_map_count
+        value: '262144'
+        state: present
+        reload: yes
+
+    - name: Create elasticsearch data directory
+      file:
+        path: /opt/elasticsearch/data
+        state: directory
+        mode: '0777'
+
+    - name: Run Elasticsearch container
+      docker_container:
+        name: elasticsearch
+        image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+        state: started
+        restart_policy: always
+        ports:
+          - "9200:9200"
+          - "9300:9300"
+        env:
+          discovery.type: "single-node"
+          ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+          xpack.security.enabled: "false"
+        volumes:
+          - /opt/elasticsearch/data:/usr/share/elasticsearch/data

@@ -1,0 +1,61 @@
+---
+- name: Install Grafana from tar.gz
+  hosts: grafana
+  become: yes
+  tasks:
+    - name: Install dependencies
+      apt:
+        name:
+          - wget
+          - tar
+        state: present
+        update_cache: yes
+
+    - name: Download Grafana
+      get_url:
+        url: https://dl.grafana.com/oss/release/grafana-10.2.2.linux-amd64.tar.gz
+        dest: /tmp/grafana.tar.gz
+
+    - name: Extract Grafana
+      unarchive:
+        src: /tmp/grafana.tar.gz
+        dest: /opt
+        remote_src: yes
+
+    - name: Create symbolic link
+      file:
+        src: /opt/grafana-v10.2.2
+        dest: /opt/grafana
+        state: link
+
+    - name: Create grafana user
+      user:
+        name: grafana
+        shell: /bin/false
+        system: yes
+
+    - name: Create systemd service
+      copy:
+        dest: /etc/systemd/system/grafana-server.service
+        content: |
+          [Unit]
+          Description=Grafana Server
+          After=network.target
+
+          [Service]
+          User=grafana
+          Group=grafana
+          Type=simple
+          ExecStart=/opt/grafana/bin/grafana-server --config=/opt/grafana/conf/defaults.ini
+          WorkingDirectory=/opt/grafana
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Start and enable Grafana
+      systemd:
+        name: grafana-server
+        state: started
+        enabled: yes
+        daemon_reload: yes

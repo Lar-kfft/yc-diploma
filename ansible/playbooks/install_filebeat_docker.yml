@@ -1,0 +1,45 @@
+---
+- name: Install Filebeat with Docker on web servers
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Create filebeat directories
+      file:
+        path: "{{ item }}"
+        state: directory
+      loop:
+        - /opt/filebeat
+        - /opt/filebeat/logs
+
+    - name: Create filebeat.yml config
+      copy:
+        dest: /opt/filebeat/filebeat.yml
+        content: |
+          filebeat.inputs:
+          - type: log
+            enabled: true
+            paths:
+              - /var/log/nginx/access.log
+              - /var/log/nginx/error.log
+
+          output.elasticsearch:
+            hosts: ["192.168.20.26:9200"]
+
+          setup.kibana:
+            host: "192.168.20.26:5601"
+
+    - name: Stop and remove old filebeat container
+      shell: |
+        docker stop filebeat || true
+        docker rm filebeat || true
+      ignore_errors: yes
+
+    - name: Run Filebeat container
+      shell: |
+        docker run -d \
+          --name filebeat \
+          --restart always \
+          -v /opt/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro \
+          -v /var/log/nginx:/var/log/nginx:ro \
+          -v /var/lib/docker/containers:/var/lib/docker/containers:ro \
+          docker.elastic.co/beats/filebeat:8.11.0

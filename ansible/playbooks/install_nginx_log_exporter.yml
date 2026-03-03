@@ -1,0 +1,67 @@
+---
+- name: Install Nginx Log Exporter
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Download Nginx Log Exporter
+      get_url:
+        url: https://github.com/martin-helmich/prometheus-nginxlog-exporter/releases/download/v1.11.0/prometheus-nginxlog-exporter_1.11.0_linux_amd64.tar.gz
+        dest: /tmp/nginxlog-exporter.tar.gz
+
+    - name: Extract archive
+      unarchive:
+        src: /tmp/nginxlog-exporter.tar.gz
+        dest: /tmp
+        remote_src: yes
+
+    - name: Copy binary
+      copy:
+        src: /tmp/prometheus-nginxlog-exporter
+        dest: /usr/local/bin/nginxlog-exporter
+        mode: '0755'
+        remote_src: yes
+
+    - name: Create config directory
+      file:
+        path: /etc/nginxlog-exporter
+        state: directory
+
+    - name: Create config file
+      copy:
+        dest: /etc/nginxlog-exporter/config.hcl
+        content: |
+          listen {
+            port = 4040
+          }
+
+          namespace "nginx" {
+            source {
+              files = [
+                "/var/log/nginx/access.log"
+              ]
+            }
+          }
+
+    - name: Create systemd service
+      copy:
+        dest: /etc/systemd/system/nginxlog-exporter.service
+        content: |
+          [Unit]
+          Description=Nginx Log Exporter
+          After=network.target
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/local/bin/nginxlog-exporter -config-file /etc/nginxlog-exporter/config.hcl
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Start and enable service
+      systemd:
+        name: nginxlog-exporter
+        state: started
+        enabled: yes
+        daemon_reload: yes
+

@@ -1,0 +1,30 @@
+---
+- name: Install nginx fast
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: present
+        update_cache: no
+
+    - name: Create index.html
+      copy:
+        content: |
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>Welcome</title>
+          </head>
+          <body>
+              <h1>Hello from {{ ansible_hostname }}</h1>
+          </body>
+          </html>
+        dest: /var/www/html/index.html
+
+    - name: Start nginx
+      systemd:
+        name: nginx
+        state: started
+        enabled: yes

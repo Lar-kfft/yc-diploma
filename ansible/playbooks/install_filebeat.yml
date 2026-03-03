@@ -1,0 +1,37 @@
+---
+- name: Install Filebeat on web servers
+  hosts: webservers
+  become: yes
+  tasks:
+    - name: Download Filebeat
+      get_url:
+        url: https://artifacts.elastic.co/downloads/beats/filebeat/filebeat-8.15.0-amd64.deb
+        dest: /tmp/filebeat.deb
+        validate_certs: no
+
+    - name: Install Filebeat
+      apt:
+        deb: /tmp/filebeat.deb
+
+    - name: Configure Filebeat
+      copy:
+        dest: /etc/filebeat/filebeat.yml
+        content: |
+          filebeat.inputs:
+          - type: log
+            enabled: true
+            paths:
+              - /var/log/nginx/access.log
+              - /var/log/nginx/error.log
+
+          output.elasticsearch:
+            hosts: ["192.168.20.26:9200"]
+
+          setup.kibana:
+            host: "192.168.20.26:5601"
+
+    - name: Enable and start Filebeat
+      systemd:
+        name: filebeat
+        state: restarted
+        enabled: yes

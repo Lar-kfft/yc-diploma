@@ -1,0 +1,16 @@
+# Terraform
+terraform/.terraform/
+terraform/terraform.tfvars
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/*.tfplan
+terraform/key.json
+
+# Ansible
+ansible/*.retry
+
+# Локальные файлы
+*.log
+.DS_Store
+.vscode/
+.idea/
